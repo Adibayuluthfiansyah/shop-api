@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
+import { UserProfileType } from './types/user-profile.type';
 
 @Injectable()
 export class AuthService {
@@ -55,7 +56,10 @@ export class AuthService {
       throw new ConflictException('Email or password is incorrect');
     }
     // cek password
-    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.password as string,
+    );
     if (!isPasswordValid) {
       throw new ConflictException('Email or password is incorrect');
     }
@@ -74,7 +78,7 @@ export class AuthService {
     };
   }
   //get user profile
-  async getProfile(userId: number) {
+  async getProfile(userId: number): Promise<UserProfileType> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -89,6 +93,6 @@ export class AuthService {
     if (!user) {
       throw new ConflictException('User not found');
     }
-    return user;
+    return user as UserProfileType;
   }
 }
