@@ -56,10 +56,7 @@ export class AuthService {
       throw new ConflictException('Email or password is incorrect');
     }
     // cek password
-    const isPasswordValid = await bcrypt.compare(
-      dto.password,
-      user.password as string,
-    );
+    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
       throw new ConflictException('Email or password is incorrect');
     }
