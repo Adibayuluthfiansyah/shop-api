@@ -6,6 +6,8 @@ import { ProductModule } from './product/product.module';
 import { CategoryModule } from './category/category.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { CartModule } from './cart/cart.module';
+import { OrderModule } from './order/order.module';
 
 @Module({
   imports: [
@@ -14,7 +16,7 @@ import { APP_GUARD } from '@nestjs/core';
     }),
     ThrottlerModule.forRoot([
       {
-        ttl: 6000,
+        ttl: 60000,
         limit: 100,
       },
     ]),
@@ -22,6 +24,8 @@ import { APP_GUARD } from '@nestjs/core';
     AuthModule,
     ProductModule,
     CategoryModule,
+    CartModule,
+    OrderModule,
   ],
   providers: [
     {
