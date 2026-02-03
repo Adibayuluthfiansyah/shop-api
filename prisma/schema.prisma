@@ -52,7 +52,7 @@ model Product {
   id          Int         @id @default(autoincrement())
   name        String
   description String?
-  price       Float
+  price       Decimal     @db.Decimal(10, 2)
   stock       Int
   imageUrl    String?
   createdAt   DateTime    @default(now())
@@ -81,7 +81,7 @@ model CartItem {
 model Order {
   id         Int         @id @default(autoincrement())
   userId     Int
-  totalPrice Float
+  totalPrice Decimal     @db.Decimal(10, 2)
   status     OrderStatus @default(PENDING)
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -97,7 +97,7 @@ model OrderItem {
   orderId   Int
   productId Int
   quantity  Int
-  price     Float
+  price     Decimal @db.Decimal(10, 2)
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id])
 

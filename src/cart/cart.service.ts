@@ -95,7 +95,7 @@ export class CartService {
     });
     //calculate total price
     const totalPrice = cartItems.reduce((sum, item) => {
-      return sum + item.product.price * item.quantity;
+      return sum + Number(item.product.price) * item.quantity;
     }, 0);
 
     return {

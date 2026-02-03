@@ -1,98 +1,92 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Shop API - E-commerce Backend 
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend API skalabel untuk aplikasi E-commerce, dibangun menggunakan **NestJS**. Project ini menangani manajemen produk, keranjang belanja, pesanan (orders), dan autentikasi pengguna dengan keamanan tingkat industri.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Tech Stack
 
-## Description
+- **Framework:** [NestJS](https://nestjs.com/) (Node.js Framework)
+- **Language:** TypeScript
+- **Database:** PostgreSQL
+- **ORM:** [Prisma](https://www.prisma.io/)
+- **Caching:** Redis
+- **Authentication:** JWT (JSON Web Tokens) & Passport
+- **Security:** Helmet, Bcrypt, CORS
+- **Documentation:** Swagger UI (OpenAPI)
+- **Containerization:** Docker & Docker Compose
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Fitur Utama
 
-## Project setup
+- **Authentication & Authorization**
+  - Register & Login (JWT).
+  - Role-Based Access Control (Admin vs User).
+  - Password Hashing dengan Bcrypt.
+  
+- **Product Management**
+  - CRUD Produk (Create, Read, Update, Delete).
+  - Manajemen Stok Real-time.
+  - Tipe data harga presisi (Decimal) untuk akurasi keuangan.
 
-```bash
-$ npm install
-```
+- **Shopping Cart**
+  - Menambah item ke keranjang.
+  - Validasi stok otomatis saat penambahan.
+  - Menghitung total harga secara dinamis.
 
-## Compile and run the project
+- **Order System**
+  - **Atomic Transactions:** Menggunakan Prisma Transaction untuk memastikan stok berkurang hanya jika order berhasil dibuat.
+  - Status Order (Pending, Paid, Shipped, Delivered, Canceled).
+  - User bisa membatalkan pesanan (dengan pengembalian stok otomatis).
+  - Admin bisa update status pesanan.
 
-```bash
-# development
-$ npm run start
+## 🛠️ Prasyarat
 
-# watch mode
-$ npm run start:dev
+Sebelum menjalankan project, pastikan Anda telah menginstall:
+- [Node.js](https://nodejs.org/) (v16 atau lebih baru)
+- [Docker Desktop](https://www.docker.com/) (untuk menjalankan PostgreSQL & Redis)
+- [Git](https://git-scm.com/)
 
-# production mode
-$ npm run start:prod
-```
+## 📦 Instalasi & Setup
 
-## Run tests
+1. **Clone Repository**
+   ```bash
+   git clone [https://github.com/adibayuluthfiansyah/shopapi.git](https://github.com/adibayuluthfiansyah/shopapi.git)
+   cd shopapi
 
-```bash
-# unit tests
-$ npm run test
+2. **Instal Dependencies**
+   npm install
 
-# e2e tests
-$ npm run test:e2e
+3. **Setup Environment Variables**
+# Database (Sesuaikan dengan docker-compose)
+DATABASE_URL="postgresql://namedatabase:password@localhost:5433/shopapi_db"
+# Security
+JWT_SECRET="ganti-dengan-secret-key-yang-panjang-dan-acak"
+# Caching
+REDIS_HOST="localhost"
+REDIS_PORT=6379
+# Frontend Integration
+FRONTEND_URL="http://localhost:3000"
+# PORT=3001
+ jika kamu pakai next js, agar portnya tidak bentrok 
 
-# test coverage
-$ npm run test:cov
-```
+4. **Jalankan Database (Docker)**
+docker-compose up -d
 
-## Deployment
+5. **Migrasi Database (Prisma)**
+npx prisma migrate dev --name init
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+6. **Jalankan Server**
+npm run start:dev
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+7. **Dokumentasi API Swagger**
+Dokumentasi lengkap endpoint API tersedia secara otomatis melalui Swagger UI. Setelah server berjalan, buka browser dan akses:
+http://localhost:4000/api/docs
+Di sana Anda bisa melihat daftar endpoint, skema data, dan mencoba request langsung (Try it out).
+📂 Struktur Project
+src/
+├── auth/          # Logika Autentikasi (Login/Register/Guards)
+├── cart/          # Manajemen Keranjang Belanja
+├── category/      # Manajemen Kategori Produk
+├── order/         # Manajemen Pesanan & Transaksi
+├── product/       # Manajemen Produk & Stok
+├── prisma/        # Konfigurasi Database & Service
+├── main.ts        # Entry point & Config (Swagger/CORS)
+└── app.module.ts  # Root Module

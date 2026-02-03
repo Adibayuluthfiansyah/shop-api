@@ -41,7 +41,7 @@ export class OrderService {
 
     // Calculate total price
     const totalPrice = cartItems.reduce((sum, item) => {
-      return sum + item.quantity * item.product.price;
+      return sum + item.quantity * Number(item.product.price);
     }, 0);
 
     // transaction
