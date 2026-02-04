@@ -19,5 +19,20 @@ services:
     ports:
       - "6379:6379"
 
+
+  nginx:
+    image: nginx:alpine
+    container_name: shopapi-nginx
+    restart: always
+    ports:
+      - "80:80" 
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro 
+    extra_hosts:
+      - "host.docker.internal:host-gateway" 
+    depends_on:
+      - postgres
+      - redis
+
 volumes:
   postgres_data:

@@ -18,6 +18,8 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { UseInterceptors } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 
 @Controller('products')
 export class ProductController {
@@ -32,12 +34,16 @@ export class ProductController {
 
   //get all products
   @Get()
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(300)
   findAll(@Query() query: QueryProductDto) {
     return this.productService.findAllProducts(query);
   }
 
   // get product by id
   @Get(':id')
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(300)
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.productService.findProductById(id);
   }

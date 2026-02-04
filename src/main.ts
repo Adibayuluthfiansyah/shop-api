@@ -18,6 +18,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: configService.get<string>('FRONTEND_URL'),
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,
   });
 
@@ -30,7 +31,9 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  if (configService.get('NODE_ENV') !== 'production') {
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -40,6 +43,17 @@ async function bootstrap() {
     }),
   );
 
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .get('/health', (req, res) => {
+      res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+      });
+    });
+  app.enableShutdownHooks();
   await app.listen(port);
   console.log(`Server running on http://localhost:${port}`);
 }
