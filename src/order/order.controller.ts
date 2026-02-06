@@ -19,6 +19,8 @@ import { OrderStatus, Role } from '@prisma/client';
 import { OrderService } from './order.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import type { CurrentUserType } from '../auth/types/current-user.type';
+import { ApiResponse } from '@nestjs/swagger';
+import { OrderResponseDto } from './dto/order-response.dto';
 
 @Controller('order')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -26,11 +28,21 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
   //create order
   @Post()
+  @ApiResponse({
+    status: 201,
+    type: OrderResponseDto,
+    description: 'Order created successfully',
+  })
   createOrder(@CurrentUser() user: CurrentUserType) {
     return this.orderService.createOrder(user.userId);
   }
   // get all orders (admin only)
   @Get()
+  @ApiResponse({
+    status: 200,
+    type: [OrderResponseDto],
+    description: 'List of all orders',
+  })
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   getAllOrders(

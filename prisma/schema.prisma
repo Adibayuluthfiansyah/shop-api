@@ -16,6 +16,7 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  SELLER
 }
 
 enum OrderStatus {
@@ -38,6 +39,7 @@ model User {
   updatedAt DateTime   @updatedAt
   cart      CartItem[]
   orders    Order[]
+  products  Product[]
 
   @@index([email])
 }
@@ -61,6 +63,8 @@ model Product {
   category    Category    @relation(fields: [categoryId], references: [id])
   cartItems   CartItem[]
   orderItems  OrderItem[]
+  sellerId    Int
+  seller      User        @relation(fields: [sellerId], references: [id])
 
   @@index([categoryId])
   @@index([name])

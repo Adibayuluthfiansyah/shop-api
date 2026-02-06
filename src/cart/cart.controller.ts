@@ -15,6 +15,8 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import type { CurrentUserType } from 'src/auth/types/current-user.type';
 import { UpdateCartDto } from './dto/update-cart.dto';
 import { AddToCartDto } from './dto/add-to-cart.dto';
+import { CartResponseDto } from './dto/cart-response.dto';
+import { ApiResponse } from '@nestjs/swagger/dist/decorators/api-response.decorator';
 
 @Controller('cart')
 @UseGuards(JwtAuthGuard)
@@ -28,6 +30,11 @@ export class CartController {
   }
   //get my cart
   @Get()
+  @ApiResponse({
+    status: 200,
+    type: CartResponseDto,
+    description: 'User cart details',
+  })
   getMyCart(@CurrentUser() user: CurrentUserType) {
     return this.cartService.getUserCart(user.userId);
   }

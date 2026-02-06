@@ -1,16 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class ProductService {
   constructor(private prisma: PrismaService) {}
 
   //create product(Admin Only)
-  async createProduct(dto: CreateProductDto) {
+  async createProduct(dto: CreateProductDto, sellerId: number) {
     //check category exists
     const category = await this.prisma.category.findUnique({
       where: { id: dto.categoryId },
@@ -19,7 +23,10 @@ export class ProductService {
       throw new NotFoundException('Category not found');
     }
     const product = await this.prisma.product.create({
-      data: dto,
+      data: {
+        ...dto,
+        sellerId,
+      },
       include: {
         category: true,
       },
@@ -87,10 +94,21 @@ export class ProductService {
     return product;
   }
 
-  //update product(Admin Only)
-  async updateProduct(id: number, dto: UpdateProductDto) {
+  //update product(Seller & Admin)
+  async updateProduct(
+    id: number,
+    dto: UpdateProductDto,
+    userId: number,
+    userRole: Role,
+  ) {
     //check product exists
-    await this.findProductById(id);
+    const product = await this.findProductById(id);
+    //admin can update any product
+    if (userRole !== Role.ADMIN && product.sellerId !== userId) {
+      throw new ForbiddenException(
+        'You are not allowed to update this product',
+      );
+    }
 
     //if update product then check categoryId
     if (dto.categoryId) {
@@ -101,20 +119,29 @@ export class ProductService {
         throw new NotFoundException('Category not found');
       }
     }
-    const product = await this.prisma.product.update({
+    const productUpdate = await this.prisma.product.update({
       where: { id },
       data: dto,
       include: { category: true },
     });
     return {
       message: 'Product updated successfully',
-      product,
+      product: productUpdate,
     };
   }
-  // delete product(admin only)
-  async deleteProduct(id: number) {
+  // delete product(admin seller)
+  async deleteProduct(id: number, userId: number, userRole: Role) {
     //check product exists
-    await this.findProductById(id);
+    const product = await this.findProductById(id);
+    //check if the user is the owner of the product
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+    if (userRole !== Role.ADMIN && product.sellerId !== userId) {
+      throw new ForbiddenException(
+        'You are not allowed to delete this product',
+      );
+    }
     await this.prisma.product.delete({ where: { id } });
     return { message: 'Product deleted successfully' };
   }
