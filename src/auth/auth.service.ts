@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
@@ -18,6 +22,7 @@ export class AuthService {
     const exitingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
+
     if (exitingUser) {
       throw new ConflictException('Email already exists');
     }
@@ -53,19 +58,19 @@ export class AuthService {
       where: { email: dto.email },
     });
     if (!user) {
-      throw new ConflictException('Email or password is incorrect');
+      throw new UnauthorizedException('Email or password is incorrect');
     }
     // cek password
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
-      throw new ConflictException('Email or password is incorrect');
+      throw new UnauthorizedException('Email or password is incorrect');
     }
     // generate jwt token
     const payload = { sub: user.id, email: user.email, role: user.role };
-    const accesToken = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload);
     return {
       message: 'Login successfully',
-      accesToken,
+      accessToken,
       user: {
         id: user.id,
         email: user.email,

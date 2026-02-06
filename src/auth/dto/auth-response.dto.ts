@@ -26,7 +26,7 @@ export class LoginResponseDto {
   message: string;
 
   @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
-  accesToken: string;
+  accessToken: string;
 
   @ApiProperty({ type: UserProfileDto })
   user: UserProfileDto;
