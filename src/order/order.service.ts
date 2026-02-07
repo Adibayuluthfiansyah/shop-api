@@ -145,12 +145,6 @@ export class OrderService {
 
   // handle midtrans notification
   async handleNotification(notificationJson: MidtransNotification) {
-    console.log('📦 ===== MIDTRANS NOTIFICATION START =====');
-    console.log(
-      '📦 Received notification:',
-      JSON.stringify(notificationJson, null, 2),
-    );
-
     // verify signature
     const verifySignature = crypto
       .createHash('sha512')
@@ -162,88 +156,45 @@ export class OrderService {
       )
       .digest('hex');
 
-    console.log('🔐 Signature validation:', {
-      received: notificationJson.signature_key,
-      calculated: verifySignature,
-      isValid: verifySignature === notificationJson.signature_key,
-    });
-
     if (verifySignature !== notificationJson.signature_key) {
-      console.error('❌ Invalid Signature Key!');
       throw new BadRequestException('Invalid Signature Key');
     }
 
-    console.log('✅ Signature valid');
-    console.log('✅ Signature valid');
     // double check status with midtrans
-    console.log('🔄 Checking transaction status with Midtrans API...');
-
     const statusResponse =
       await this.apiClient.transaction.notification(notificationJson);
-
-    console.log(
-      '📊 Midtrans status response:',
-      JSON.stringify(statusResponse, null, 2),
-    );
 
     const orderId = statusResponse.order_id;
     const transactionStatus = statusResponse.transaction_status;
     const fraudStatus = statusResponse.fraud_status;
     const paymentType = statusResponse.payment_type;
 
-    console.log('📋 Transaction details:', {
-      orderId,
-      transactionStatus,
-      fraudStatus,
-      paymentType,
-    });
-
     // get real order ID
-    console.log('🔍 Parsing order ID:', orderId);
     const realOrderId = Number(orderId.split('-')[1]);
 
-    console.log('🆔 Real order ID:', realOrderId);
-
     if (isNaN(realOrderId)) {
-      console.error('❌ Invalid order ID format!');
       throw new BadRequestException('Invalid order ID in notification');
     }
 
     //check order existence at our database
-    console.log('🔍 Searching order in database with ID:', realOrderId);
-
     const currentOrder = await this.prisma.order.findUnique({
       where: { id: realOrderId },
       include: { items: true },
     });
 
     if (!currentOrder) {
-      console.error('❌ Order not found in database!');
       throw new NotFoundException('Order not found');
     }
-
-    console.log('✅ Order found:', {
-      id: currentOrder.id,
-      userId: currentOrder.userId,
-      currentStatus: currentOrder.status,
-      totalPrice: currentOrder.totalPrice,
-    });
 
     // if already paid or canceled, ignore
     if (
       currentOrder.status === OrderStatus.PAID ||
       currentOrder.status === OrderStatus.CANCELED
     ) {
-      console.log(
-        '⚠️ Order already processed. Current status:',
-        currentOrder.status,
-      );
       return { status: 'ignored', message: 'Order already processed' };
     }
 
     // determine new status
-    console.log('🎯 Determining new status based on transaction...');
-
     let newStatus: OrderStatus = OrderStatus.PENDING;
     if (transactionStatus === 'capture') {
       if (fraudStatus === 'challenge') {
@@ -262,15 +213,8 @@ export class OrderService {
       newStatus = OrderStatus.CANCELED;
     }
 
-    console.log('📌 New status determined:', {
-      from: currentOrder.status,
-      to: newStatus,
-    });
-
     // update order status
     if (newStatus !== OrderStatus.PENDING) {
-      console.log('💾 Updating order status in database...');
-
       await this.prisma.$transaction(async (tx) => {
         await tx.order.update({
           where: { id: realOrderId },
@@ -280,29 +224,18 @@ export class OrderService {
           },
         });
 
-        console.log('✅ Order status updated to:', newStatus);
-
         // return stock if canceled
         if (newStatus === OrderStatus.CANCELED) {
-          console.log('📦 Returning stock for canceled order...');
           for (const item of currentOrder.items) {
             await tx.product.update({
               where: { id: item.productId },
               data: { stock: { increment: item.quantity } },
             });
-            console.log(
-              `  ✅ Stock returned for product ${item.productId}: +${item.quantity}`,
-            );
           }
         }
       });
-
-      console.log('✅ Transaction completed successfully');
-    } else {
-      console.log('⚠️ Status still PENDING, no update needed');
     }
 
-    console.log('📦 ===== MIDTRANS NOTIFICATION END =====');
     return { status: 'ok' };
   }
 
@@ -345,12 +278,6 @@ export class OrderService {
 
   // get order details
   async getOrderDetails(userId: number, orderId: number, isAdmin: boolean) {
-    console.log('🔍 Get Order Details Request:', {
-      userId,
-      orderId,
-      isAdmin,
-    });
-
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -368,27 +295,13 @@ export class OrderService {
     });
 
     if (!order) {
-      console.error('❌ Order not found with ID:', orderId);
       throw new NotFoundException('Order not found');
     }
 
-    console.log('✅ Order found:', {
-      orderId: order.id,
-      orderUserId: order.userId,
-      requestUserId: userId,
-      status: order.status,
-    });
-
     if (!isAdmin && order.userId !== userId) {
-      console.error('❌ Access denied:', {
-        orderOwner: order.userId,
-        requestUser: userId,
-        isAdmin,
-      });
       throw new ForbiddenException('You are not allowed to access this order');
     }
 
-    console.log('✅ Access granted');
     return order;
   }
 
