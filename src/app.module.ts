@@ -10,6 +10,8 @@ import { CartModule } from './cart/cart.module';
 import { OrderModule } from './order/order.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import * as redisStore from 'cache-manager-redis-store';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -40,7 +42,9 @@ import * as redisStore from 'cache-manager-redis-store';
     CartModule,
     OrderModule,
   ],
+  controllers: [AppController],
   providers: [
+    AppService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

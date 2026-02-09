@@ -1,7 +1,12 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AppService } from './app.service';
 import { SkipThrottle } from '@nestjs/throttler';
+import { Request } from 'express';
+
+interface RequestWithCsrf extends Request {
+  csrfToken(): string;
+}
 
 @ApiTags('Health')
 @Controller()
@@ -62,5 +67,27 @@ export class AppController {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
     };
+  }
+  @Get('csrf-token')
+  @ApiOperation({
+    summary: 'Get CSRF Token',
+    description:
+      'Fetches a unique CSRF token required for mutation requests (POST, PUT, DELETE)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'CSRF Token successfully retrieved',
+    schema: {
+      type: 'object',
+      properties: {
+        csrfToken: {
+          type: 'string',
+          example: 'E8s9d... (random token)',
+        },
+      },
+    },
+  })
+  getCsrfToken(@Req() request: RequestWithCsrf) {
+    return { csrfToken: request.csrfToken() };
   }
 }

@@ -4,6 +4,9 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
+import csurf from 'csurf';
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,6 +19,11 @@ async function bootstrap() {
     }),
   );
 
+  app.use(json({ limit: '1mb' }));
+  app.use(urlencoded({ extended: true, limit: '1mb' }));
+
+  app.use(cookieParser());
+
   app.enableCors({
     origin: configService.get<string>('FRONTEND_URL'),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
@@ -23,6 +31,16 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api');
+
+  app.use(
+    csurf({
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+      },
+    }),
+  );
 
   // Swagger Configuration
   const config = new DocumentBuilder()
