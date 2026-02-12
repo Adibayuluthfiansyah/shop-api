@@ -5,8 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
-import csurf from 'csurf';
 import { json, urlencoded } from 'express';
+import { conditionalCsrfMiddleware } from './common/middleware/conditional-csrf.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -32,15 +32,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  app.use(
-    csurf({
-      cookie: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-      },
-    }),
-  );
+  // This will skip CSRF for OAuth endpoints while protecting all other routes
+  app.use(conditionalCsrfMiddleware);
 
   // Swagger Configuration
   const config = new DocumentBuilder()
