@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Get, UseGuards, Res } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  Req,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -20,6 +29,7 @@ import {
   RegisterResponseDto,
   UserProfileDto,
 } from './dto/auth-response.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -75,6 +85,7 @@ export class AuthController {
 
   // login
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Login user',
     description: 'Authenticate user and receive JWT access token',
@@ -82,7 +93,7 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   @ApiResponse({
     status: 200,
-    description: 'Login successful, returns JWT token',
+    description: 'Return access_token & refresh_token',
     type: LoginResponseDto,
   })
   @ApiResponse({
@@ -101,88 +112,13 @@ export class AuthController {
       ttl: 60000,
     },
   })
-  async login(
-    @Body() dto: LoginDto,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    const result = await this.authService.login(dto);
-    response.cookie('access_token', result.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    return {
-      message: 'Login successful',
-      user: result.user,
-    };
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
   }
 
-  // get current user profile
-  @Get('profile')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Get current user profile',
-    description: 'Retrieve authenticated user profile information',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns user profile',
-    type: UserProfileDto,
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Invalid or missing token',
-    schema: {
-      example: {
-        statusCode: 401,
-        message: 'Unauthorized',
-      },
-    },
-  })
-  getProfile(@CurrentUser() user: CurrentUserType) {
-    return this.authService.getProfile(user.userId);
-  }
-
-  // logout
-  @Post('logout')
-  @ApiOperation({ summary: 'Logout user' })
-  logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-    });
-    return { message: 'Logout successful' };
-  }
-
-  /**
-   * Google OAuth Login Endpoint
-   * 
-   * This endpoint is called by the frontend after NextAuth handles Google OAuth.
-   * It creates or updates the user in our database and returns a JWT token.
-   * 
-   * @security CSRF Protection
-   * This endpoint is EXEMPT from CSRF protection because:
-   * 1. User identity is cryptographically verified by Google OAuth 2.0 flow
-   * 2. Google has already validated email ownership and user consent
-   * 3. The providerAccountId (Google user ID) serves as proof of authentication
-   * 4. No sensitive state mutation occurs without explicit user authorization via Google
-   * 5. The endpoint only creates/updates user data that Google has already verified
-   * 
-   * @security Attack Mitigation
-   * - SQL Injection: Protected by Prisma ORM parameterized queries
-   * - XSS: JWT stored in httpOnly cookies, DTO validation via class-validator
-   * - Replay Attacks: Google OAuth tokens are single-use and time-limited
-   * - MITM: HTTPS enforced, secure cookies in production
-   * 
-   * @see conditionalCsrfMiddleware for CSRF skip implementation
-   * @see {@link https://developers.google.com/identity/protocols/oauth2}
-   */
+  // google auth endpoint
   @Post('google-login')
-  @SkipThrottle() // Skip throttling for OAuth - consider enabling with higher limits if abuse detected
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Google OAuth Login',
     description:
@@ -217,7 +153,61 @@ export class AuthController {
       },
     },
   })
-  async googleLogin(@Body() dto: GoogleLoginDto) {
-    return this.authService.googleLogin(dto);
+  async googleLogin(@Body() googleLoginDto: GoogleLoginDto) {
+    return this.authService.googleLogin(googleLoginDto);
+  }
+
+  // logout
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout user' })
+  async logout(@CurrentUser() user: CurrentUserType) {
+    await this.authService.logout(user.userId);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Logged out successfully',
+    };
+  }
+
+  // refresh token
+  @Post('refresh')
+  @UseGuards(AuthGuard('jwt-refresh'))
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access token' })
+  async refreshTokens(@Req() req) {
+    const userId = req.user['sub'] as number;
+    const refreshToken = req.user['refreshToken'] as string;
+    // FIX: Panggil method jamak 'refreshTokens'
+    return this.authService.refreshTokens(userId, refreshToken);
+  }
+
+  // get current user profile
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get current user profile',
+    description: 'Retrieve authenticated user profile information',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns user profile',
+    type: UserProfileDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+      },
+    },
+  })
+  async getProfile(@CurrentUser() user: CurrentUserType) {
+    return this.authService.getProfile(user.userId);
   }
 }

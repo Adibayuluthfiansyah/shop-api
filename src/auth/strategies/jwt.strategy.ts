@@ -18,15 +18,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private prisma: PrismaService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        (request: Request) => {
-          let token = null;
-          if (request && request.cookies) {
-            token = request.cookies['access_token'];
-          }
-          return token;
-        },
-      ]),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
     });
@@ -35,17 +27,26 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
-    if (!user) {
-      throw new UnauthorizedException();
-    }
-    if (user) {
-      //eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...result } = user;
-      return {
-        userId: result.id,
-        email: result.email,
-        role: result.role,
-      };
-    }
+    if (!user) throw new UnauthorizedException();
+    return {
+      userId: payload.sub,
+      email: payload.email,
+      role: payload.role,
+    };
+    //   const user = await this.prisma.user.findUnique({
+    //     where: { id: payload.sub },
+    //   });
+    //   if (!user) {
+    //     throw new UnauthorizedException();
+    //   }
+    //   if (user) {
+    //     //eslint-disable-next-line @typescript-eslint/no-unused-vars
+    //     const { password, ...result } = user;
+    //     return {
+    //       userId: result.id,
+    //       email: result.email,
+    //       role: result.role,
+    //     };
+    //   }
   }
 }
