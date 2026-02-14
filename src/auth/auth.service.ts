@@ -111,7 +111,10 @@ export class AuthService {
           googleId: dto.googleId,
           name: dto.name,
           image: dto.image,
-          emailVerified: dto.emailVerified || new Date(),
+          emailVerified:
+            (dto.emailVerified as unknown) === true
+              ? new Date()
+              : dto.emailVerified,
         },
       });
     } else {
@@ -121,8 +124,12 @@ export class AuthService {
           name: dto.name,
           googleId: dto.googleId,
           image: dto.image,
-          emailVerified: dto.emailVerified || new Date(),
+          emailVerified:
+            (dto.emailVerified as unknown) === true
+              ? new Date()
+              : dto.emailVerified,
           password: 'GOOGLE_AUTH_NO_PASSWORD',
+          role: 'USER',
         },
       });
     }
@@ -185,10 +192,7 @@ export class AuthService {
     if (!user || !user.hashedRefreshToken)
       throw new ForbiddenException('Access Denied');
 
-    const rtMatches = await bcrypt.compare(
-      rt,
-      user.hashedRefreshToken as string,
-    );
+    const rtMatches = await bcrypt.compare(rt, user.hashedRefreshToken);
     if (!rtMatches) throw new ForbiddenException('Access Denied');
 
     const tokens = await this.getTokens(user.id, user.email, user.role);
