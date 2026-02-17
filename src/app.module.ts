@@ -12,6 +12,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import * as redisStore from 'cache-manager-redis-store';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -25,7 +26,7 @@ import { AppService } from './app.service';
         store: redisStore,
         host: configService.get<string>('REDIS_HOST'),
         port: configService.get<number>('REDIS_PORT'),
-        ttl: 600, // seconds
+        ttl: 600,
       }),
       inject: [ConfigService],
     }),
@@ -41,6 +42,7 @@ import { AppService } from './app.service';
     CategoryModule,
     CartModule,
     OrderModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [
