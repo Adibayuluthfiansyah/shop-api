@@ -3,6 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -25,6 +26,7 @@ type MidtransCoreApiFix = midtransClient.CoreApi & {
 export class OrderService {
   private snap: midtransClient.Snap;
   private apiClient: MidtransCoreApiFix;
+  private readonly logger = new Logger(OrderService.name);
   constructor(private prisma: PrismaService) {
     this.snap = new midtransClient.Snap({
       isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true',
@@ -39,7 +41,7 @@ export class OrderService {
   }
 
   // create order
-  async createOrder(userId: number) {
+  async createOrder(userId: string) {
     const cartItems = await this.prisma.cartItem.findMany({
       where: { userId },
       include: { product: true },
@@ -145,7 +147,6 @@ export class OrderService {
 
   // handle midtrans notification
   async handleNotification(notificationJson: MidtransNotification) {
-    // verify signature
     const verifySignature = crypto
       .createHash('sha512')
       .update(
@@ -160,87 +161,107 @@ export class OrderService {
       throw new BadRequestException('Invalid Signature Key');
     }
 
-    // double check status with midtrans
-    const statusResponse =
-      await this.apiClient.transaction.notification(notificationJson);
+    // double check status
+    let statusResponse;
+    try {
+      statusResponse =
+        await this.apiClient.transaction.notification(notificationJson);
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to check status with Midtrans: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
 
     const orderId = statusResponse.order_id;
     const transactionStatus = statusResponse.transaction_status;
     const fraudStatus = statusResponse.fraud_status;
     const paymentType = statusResponse.payment_type;
+    const grossAmount = statusResponse.gross_amount;
 
     // get real order ID
     const realOrderId = Number(orderId.split('-')[1]);
-
     if (isNaN(realOrderId)) {
       throw new BadRequestException('Invalid order ID in notification');
     }
 
-    //check order existence at our database
-    const currentOrder = await this.prisma.order.findUnique({
-      where: { id: realOrderId },
-      include: { items: true },
-    });
-
-    if (!currentOrder) {
-      throw new NotFoundException('Order not found');
-    }
-
-    // if already paid or canceled, ignore
-    if (
-      currentOrder.status === OrderStatus.PAID ||
-      currentOrder.status === OrderStatus.CANCELED
-    ) {
-      return { status: 'ignored', message: 'Order already processed' };
-    }
-
-    // determine new status
-    let newStatus: OrderStatus = OrderStatus.PENDING;
-    if (transactionStatus === 'capture') {
-      if (fraudStatus === 'challenge') {
-        newStatus = OrderStatus.PROCESSING;
-      } else if (fraudStatus === 'accept') {
-        newStatus = OrderStatus.PAID;
-      }
-    } else if (transactionStatus === 'settlement') {
-      newStatus = OrderStatus.PAID;
-    } else if (
-      transactionStatus === 'cancel' ||
-      transactionStatus === 'deny' ||
-      transactionStatus === 'expire' ||
-      transactionStatus === 'failure'
-    ) {
-      newStatus = OrderStatus.CANCELED;
-    }
-
-    // update order status
-    if (newStatus !== OrderStatus.PENDING) {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.order.update({
-          where: { id: realOrderId },
-          data: {
-            status: newStatus,
-            paymentType: paymentType,
-          },
-        });
-
-        // return stock if canceled
-        if (newStatus === OrderStatus.CANCELED) {
-          for (const item of currentOrder.items) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { increment: item.quantity } },
-            });
-          }
-        }
+    return await this.prisma.$transaction(async (tx) => {
+      const currentOrder = await tx.order.findUnique({
+        where: { id: realOrderId },
+        include: { items: true },
       });
-    }
 
-    return { status: 'ok' };
+      if (!currentOrder) {
+        throw new NotFoundException('Order not found');
+      }
+
+      // make sure nominal match
+      if (Number(currentOrder.totalPrice) !== Number(grossAmount)) {
+        this.logger.warn(
+          `Invalid amount. DB: ${currentOrder.totalPrice.toString()}, Midtrans: ${grossAmount}`,
+        );
+        return { status: 'error', message: 'Invalid gross amount' };
+      }
+
+      if (
+        currentOrder.status === OrderStatus.PAID ||
+        currentOrder.status === OrderStatus.CANCELED
+      ) {
+        return { status: 'ignored', message: 'Order already processed' };
+      }
+
+      let potentialStatus: OrderStatus | null = null;
+
+      if (transactionStatus === 'capture') {
+        if (fraudStatus === 'accept') {
+          potentialStatus = OrderStatus.PAID;
+        }
+      } else if (transactionStatus === 'settlement') {
+        potentialStatus = OrderStatus.PAID;
+      } else if (
+        transactionStatus === 'cancel' ||
+        transactionStatus === 'deny' ||
+        transactionStatus === 'expire' ||
+        transactionStatus === 'failure'
+      ) {
+        potentialStatus = OrderStatus.CANCELED;
+      }
+
+      // check status
+      if (
+        !potentialStatus ||
+        potentialStatus === (currentOrder.status as OrderStatus)
+      ) {
+        return { status: 'ignored', message: 'No status change required' };
+      }
+
+      // update status
+      await tx.order.update({
+        where: { id: realOrderId },
+        data: {
+          status: potentialStatus,
+          paymentType: paymentType,
+        },
+      });
+
+      // refund stock if cancelled
+      if (potentialStatus === OrderStatus.CANCELED) {
+        for (const item of currentOrder.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+        this.logger.log(`Order ${realOrderId} canceled. Stock returned.`);
+      } else {
+        this.logger.log(`Order ${realOrderId} updated to ${potentialStatus}`);
+      }
+
+      return { status: 'ok' };
+    });
   }
 
   // get my orders (pagination)
-  async getMyOrders(userId: number, page = 1, limit = 10) {
+  async getMyOrders(userId: string, page = 1, limit = 10) {
     const safeLimit = Math.min(limit, 50);
     const skip = (page - 1) * safeLimit;
 
@@ -277,7 +298,7 @@ export class OrderService {
   }
 
   // get order details
-  async getOrderDetails(userId: number, orderId: number, isAdmin: boolean) {
+  async getOrderDetails(userId: string, orderId: number, isAdmin: boolean) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -405,7 +426,7 @@ export class OrderService {
   }
 
   // cancel order (user only)
-  async cancelOrder(userId: number, orderId: number) {
+  async cancelOrder(userId: string, orderId: number) {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, userId },
       include: {
@@ -443,7 +464,7 @@ export class OrderService {
   }
   // get seller orders
   async getSellerOrders(
-    sellerId: number,
+    sellerId: string,
     page = 1,
     limit = 10,
     status?: OrderStatus,

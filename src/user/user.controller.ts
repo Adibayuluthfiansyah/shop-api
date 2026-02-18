@@ -51,24 +51,21 @@ export class UserController {
   @Get(':id')
   @UseInterceptors(CacheInterceptor)
   @CacheTTL(400)
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id') id: string) {
     return this.userService.findOne(id);
   }
 
   @Patch(':id/role')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin Only Update User Role' })
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateUserRoleDto,
-  ) {
+  async update(@Param('id') id: string, @Body() dto: UpdateUserRoleDto) {
     return await this.userService.updateRole(id, dto);
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin Only Remove User' })
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }
 }

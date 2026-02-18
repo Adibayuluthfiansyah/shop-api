@@ -151,7 +151,7 @@ export class AuthService {
     };
   }
   //get user profile
-  async getProfile(userId: number): Promise<UserProfileType> {
+  async getProfile(userId: string): Promise<UserProfileType> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -170,7 +170,7 @@ export class AuthService {
   }
 
   // logout
-  async logout(userId: number) {
+  async logout(userId: string) {
     await this.prisma.user.updateMany({
       where: {
         id: userId,
@@ -183,7 +183,7 @@ export class AuthService {
     return true;
   }
 
-  async refreshTokens(userId: number, rt: string) {
+  async refreshTokens(userId: string, rt: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -202,7 +202,7 @@ export class AuthService {
   }
 
   // update refresh token
-  async updateRefreshToken(userId: number, rt: string) {
+  async updateRefreshToken(userId: string, rt: string) {
     const hash = await bcrypt.hash(rt, 10);
     await this.prisma.user.update({
       where: { id: userId },
@@ -213,7 +213,7 @@ export class AuthService {
   }
 
   // get token
-  async getTokens(userId: number, email: string, role: string) {
+  async getTokens(userId: string, email: string, role: string) {
     const [at, rt] = await Promise.all([
       this.jwtService.signAsync(
         { sub: userId, email, role },

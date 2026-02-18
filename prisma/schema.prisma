@@ -29,23 +29,24 @@ enum OrderStatus {
 }
 
 model User {
-  id                 Int        @id @default(autoincrement())
-  email              String     @unique
+  id                 String           @id @default(uuid())
+  email              String           @unique
   emailVerified      DateTime?
   image              String?
   password           String?
   name               String
   phone              String?
-  googleId           String?    @unique
+  googleId           String?          @unique
   hashedRefreshToken String?
   accounts           Account[]
   sessions           Session[]
-  role               Role       @default(USER)
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  role               Role             @default(USER)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
   cart               CartItem[]
   orders             Order[]
   products           Product[]
+  idempotencyKeys    IdempotencyKey[]
 
   @@index([email])
   @@index([googleId])
@@ -53,7 +54,7 @@ model User {
 
 model Account {
   id                String  @id @default(cuid())
-  userId            Int
+  userId            String
   type              String
   provider          String
   providerAccountId String
@@ -73,7 +74,7 @@ model Account {
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
-  userId       Int
+  userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -92,6 +93,19 @@ model Category {
   products Product[]
 }
 
+model IdempotencyKey {
+  key        String   @id
+  userId     String
+  method     String
+  path       String
+  response   String   @db.Text
+  statusCode Int
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 model Product {
   id          Int         @id @default(autoincrement())
   name        String
@@ -105,7 +119,7 @@ model Product {
   category    Category    @relation(fields: [categoryId], references: [id])
   cartItems   CartItem[]
   orderItems  OrderItem[]
-  sellerId    Int
+  sellerId    String
   seller      User        @relation(fields: [sellerId], references: [id])
 
   @@index([categoryId])
@@ -114,7 +128,7 @@ model Product {
 
 model CartItem {
   id        Int     @id @default(autoincrement())
-  userId    Int
+  userId    String
   productId Int
   quantity  Int
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -126,7 +140,7 @@ model CartItem {
 
 model Order {
   id                   Int         @id @default(autoincrement())
-  userId               Int
+  userId               String
   totalPrice           Decimal     @db.Decimal(10, 2)
   status               OrderStatus @default(PENDING)
   createdAt            DateTime    @default(now())
@@ -135,7 +149,7 @@ model Order {
   items                OrderItem[]
   snapToken            String?
   snapTokenRedirectUrl String?
-  midtransOrderId      String?
+  midtransOrderId      String?     @unique
   paymentType          String?
 
   @@index([userId])

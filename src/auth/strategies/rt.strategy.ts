@@ -4,7 +4,7 @@ import { Request } from 'express';
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 export type JwtPayload = {
-  sub: number;
+  sub: string;
   email: string;
   role: string;
 };

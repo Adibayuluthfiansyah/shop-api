@@ -178,7 +178,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })
   async refreshTokens(@Req() req) {
-    const userId = req.user['sub'] as number;
+    const userId = req.user['sub'] as string;
     const refreshToken = req.user['refreshToken'] as string;
     // FIX: Panggil method jamak 'refreshTokens'
     return this.authService.refreshTokens(userId, refreshToken);

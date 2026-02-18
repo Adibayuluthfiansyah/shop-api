@@ -12,7 +12,7 @@ import { AddToCartDto } from './dto/add-to-cart.dto';
 export class CartService {
   constructor(private prisma: PrismaService) {}
   //add to cart
-  async addToCart(userId: number, dto: AddToCartDto) {
+  async addToCart(userId: string, dto: AddToCartDto) {
     //check product exists dan stock available
     const product = await this.prisma.product.findUnique({
       where: { id: dto.productId },
@@ -79,7 +79,7 @@ export class CartService {
     };
   }
   //get user cart
-  async getUserCart(userId: number) {
+  async getUserCart(userId: string) {
     const cartItems = await this.prisma.cartItem.findMany({
       where: { userId },
       include: {
@@ -109,7 +109,7 @@ export class CartService {
   }
   // update cart item quantity
   async updateCartItemQuantity(
-    userId: number,
+    userId: string,
     cartItemId: number,
     dto: UpdateCartDto,
   ) {
@@ -145,7 +145,7 @@ export class CartService {
     };
   }
   //remove cart item
-  async removeCartItem(userId: number, cartItemId: number) {
+  async removeCartItem(userId: string, cartItemId: number) {
     //check cart item exist and belongs to user
     const cartItem = await this.prisma.cartItem.findFirst({
       where: { id: cartItemId, userId },
@@ -162,7 +162,7 @@ export class CartService {
     };
   }
   //clear cart helper for order service
-  async clearCart(userId: number) {
+  async clearCart(userId: string) {
     await this.prisma.cartItem.deleteMany({
       where: { userId },
     });

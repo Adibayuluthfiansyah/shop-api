@@ -1,5 +1,5 @@
 export type UserProfileType = {
-  id: number;
+  id: string;
   email: string;
   name: string;
   phone: string | null;

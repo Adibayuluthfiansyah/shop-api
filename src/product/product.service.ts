@@ -14,7 +14,7 @@ export class ProductService {
   constructor(private prisma: PrismaService) {}
 
   //create product(Admin Only)
-  async createProduct(dto: CreateProductDto, sellerId: number) {
+  async createProduct(dto: CreateProductDto, sellerId: string) {
     //check category exists
     const category = await this.prisma.category.findUnique({
       where: { id: dto.categoryId },
@@ -98,7 +98,7 @@ export class ProductService {
   async updateProduct(
     id: number,
     dto: UpdateProductDto,
-    userId: number,
+    userId: string,
     userRole: Role,
   ) {
     //check product exists
@@ -130,7 +130,7 @@ export class ProductService {
     };
   }
   // delete product(admin seller)
-  async deleteProduct(id: number, userId: number, userRole: Role) {
+  async deleteProduct(id: number, userId: string, userRole: Role) {
     //check product exists
     const product = await this.findProductById(id);
     //check if the user is the owner of the product
