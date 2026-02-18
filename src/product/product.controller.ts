@@ -9,6 +9,8 @@ import {
   Query,
   UseGuards,
   ParseIntPipe,
+  BadRequestException,
+  UploadedFile,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -23,6 +25,7 @@ import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import type { CurrentUserType } from 'src/auth/types/current-user.type';
 import { ProductResponsDto } from './dto/product-respons.dto';
+import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import {
   ApiTags,
   ApiOperation,
@@ -32,16 +35,21 @@ import {
   ApiQuery,
   ApiParam,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Products')
 @Controller('products')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(
+    private readonly productService: ProductService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SELLER, Role.ADMIN)
   @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('image'))
   @ApiOperation({
     summary: 'Create new product',
     description: 'Create a new product (Seller or Admin only)',
@@ -70,8 +78,20 @@ export class ProductController {
     status: 400,
     description: 'Bad Request - Invalid input data',
   })
-  create(@Body() dto: CreateProductDto, @CurrentUser() user: CurrentUserType) {
-    return this.productService.createProduct(dto, user.userId);
+  async create(
+    @Body() dto: CreateProductDto,
+    @CurrentUser() user: CurrentUserType,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (file) {
+      try {
+        const result = await this.cloudinaryService.uploadImage(file);
+        dto.imageUrl = result.url;
+      } catch {
+        throw new BadRequestException('Cloudinary upload failed');
+      }
+    }
+    return await this.productService.createProduct(dto, user.userId);
   }
 
   @Get()
