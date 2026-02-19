@@ -105,6 +105,18 @@ export class AuthService {
     });
 
     if (user) {
+      if (user.password && user.password !== 'GOOGLE_AUTH_NO_PASSWORD') {
+        throw new ConflictException(
+          'This email is already registered. Please login with email and password instead, or use a different Google account.',
+        );
+      }
+
+      if (user.googleId && user.googleId !== dto.googleId) {
+        throw new ForbiddenException(
+          'This email is already linked to a different Google account.',
+        );
+      }
+
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {

@@ -31,6 +31,8 @@ import {
 } from '@nestjs/swagger';
 import { OrderResponseDto } from './dto/order-response.dto';
 import type { MidtransNotification } from './types/midtrans.type';
+import { UseInterceptors } from '@nestjs/common';
+import { IdempotencyInterceptor } from 'src/common/interceptors/idempotency.interceptor';
 
 @ApiTags('Orders')
 @Controller('order')
@@ -40,6 +42,7 @@ export class OrderController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({
     summary: 'Create new order',
     description:

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -13,6 +14,7 @@ import * as redisStore from 'cache-manager-redis-store';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
+import { TaskService } from './common/task/task.service';
 
 @Module({
   imports: [
@@ -36,6 +38,7 @@ import { UserModule } from './user/user.module';
         limit: 100,
       },
     ]),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     ProductModule,
@@ -51,6 +54,7 @@ import { UserModule } from './user/user.module';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    TaskService,
   ],
 })
 export class AppModule {}
