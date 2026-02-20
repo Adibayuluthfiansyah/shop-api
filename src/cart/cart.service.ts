@@ -53,9 +53,17 @@ export class CartService {
           },
         },
       });
+
+      // warn calculate
+      const stockWarning =
+        newQuantity > product.stock
+          ? `Your cart quantity (${newQuantity}) exceeds available stock (${product.stock}). Quantity will be adjusted at checkout.`
+          : null;
+
       return {
         message: 'Cart item updated successfully',
         cartItem: updatedCartItem,
+        warning: stockWarning,
       };
     }
     //if not exists, create new cart item
@@ -73,9 +81,15 @@ export class CartService {
         },
       },
     });
+    //warn stock
+    const stockWarning =
+      dto.quantity > product.stock
+        ? `Warning: Available stock is ${product.stock}. Quantity will be adjusted at checkout.`
+        : null;
     return {
       message: 'Product added to cart successfully',
       cartItem,
+      warning: stockWarning,
     };
   }
   //get user cart

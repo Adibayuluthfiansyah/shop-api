@@ -8,6 +8,7 @@ import {
 import { OrderStatus } from '@prisma/client';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { timingSafeEqual } from 'crypto';
 import * as midtransClient from 'midtrans-client';
 import * as crypto from 'crypto';
 import {
@@ -157,6 +158,25 @@ export class OrderService {
       )
       .digest('hex');
 
+    try {
+      const expectedBuffer = Buffer.from(verifySignature, 'hex');
+      const providedBuffer = Buffer.from(notificationJson.signature_key, 'hex');
+
+      if (expectedBuffer.length !== providedBuffer.length) {
+        this.logger.warn('Invalid signature: length mismatch');
+        throw new ForbiddenException('Unauthorized');
+      }
+
+      if (!timingSafeEqual(expectedBuffer, providedBuffer)) {
+        this.logger.warn('Invalid signature: comparison failed');
+        throw new ForbiddenException('Unauthorized');
+      }
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      this.logger.error(`Signature verification error: ${error.message}`);
+      throw new ForbiddenException('Unauthorized');
+    }
+
     if (verifySignature !== notificationJson.signature_key) {
       throw new BadRequestException('Invalid Signature Key');
     }
@@ -196,12 +216,36 @@ export class OrderService {
 
       // make sure nominal match
       if (Number(currentOrder.totalPrice) !== Number(grossAmount)) {
-        this.logger.warn(
-          `Invalid amount. DB: ${currentOrder.totalPrice.toString()}, Midtrans: ${grossAmount}`,
+        this.logger.error(
+          `FRAUD ALERT: Amount mismatch detected!
+           Order ID: ${realOrderId}
+           Expected: ${currentOrder.totalPrice.toString()}
+           Received: ${grossAmount}
+           User: ${currentOrder.userId}`,
         );
-        return { status: 'error', message: 'Invalid gross amount' };
+
+        // cancel order not match
+        await tx.order.update({
+          where: { id: realOrderId },
+          data: {
+            status: OrderStatus.CANCELED,
+          },
+        });
+
+        // back stock
+        for (const item of currentOrder.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+
+        throw new BadRequestException(
+          'Payment verification failed: Amount Mismatch',
+        );
       }
 
+      // check status
       if (
         currentOrder.status === OrderStatus.PAID ||
         currentOrder.status === OrderStatus.CANCELED
@@ -234,7 +278,7 @@ export class OrderService {
         return { status: 'ignored', message: 'No status change required' };
       }
 
-      // update status
+      // update status normal
       await tx.order.update({
         where: { id: realOrderId },
         data: {
@@ -428,7 +472,7 @@ export class OrderService {
   // cancel order (user only)
   async cancelOrder(userId: string, orderId: number) {
     const order = await this.prisma.order.findFirst({
-      where: { id: orderId, userId },
+      where: { id: orderId, userId, status: OrderStatus.PENDING },
       include: {
         items: { include: { product: true } },
       },
@@ -438,18 +482,29 @@ export class OrderService {
       throw new NotFoundException('Order not found');
     }
 
-    if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException(
-        'Order cannot be canceled. Current status: ' + order.status,
-      );
-    }
+    // if (order.status !== OrderStatus.PENDING) {
+    //   throw new BadRequestException(
+    //     'Order cannot be canceled. Current status: ' + order.status,
+    //   );
+    // }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: orderId },
+      const updated = await tx.order.updateMany({
+        where: {
+          id: orderId,
+          userId,
+          status: OrderStatus.PENDING,
+        },
         data: { status: OrderStatus.CANCELED },
       });
 
+      if (updated.count === 0) {
+        throw new BadRequestException(
+          'Order cannot be canceled. Current status ',
+        );
+      }
+
+      //refund stock
       for (const item of order.items) {
         await tx.product.update({
           where: { id: item.productId },
@@ -462,6 +517,7 @@ export class OrderService {
       message: 'Order successfully canceled. Stock returned.',
     };
   }
+
   // get seller orders
   async getSellerOrders(
     sellerId: string,

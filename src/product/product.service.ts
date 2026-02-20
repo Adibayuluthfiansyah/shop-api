@@ -133,16 +133,38 @@ export class ProductService {
   async deleteProduct(id: number, userId: string, userRole: Role) {
     //check product exists
     const product = await this.findProductById(id);
-    //check if the user is the owner of the product
-    if (!product) {
-      throw new NotFoundException('Product not found');
-    }
+
+    //check role
     if (userRole !== Role.ADMIN && product.sellerId !== userId) {
-      throw new ForbiddenException(
-        'You are not allowed to delete this product',
-      );
+      throw new ForbiddenException('Youre Not Allowed Delete This Product');
     }
-    await this.prisma.product.delete({ where: { id } });
-    return { message: 'Product deleted successfully' };
+
+    // delete product
+    const deleted = await this.prisma.product.deleteMany({
+      where: {
+        id,
+        ...(userRole !== Role.ADMIN ? { sellerId: userId } : {}),
+      },
+    });
+
+    if (deleted.count === 0) {
+      throw new NotFoundException('Product not found or already deleted');
+    }
+
+    return {
+      message: 'Product deleted successfully',
+    };
+
+    //check if the user is the owner of the product
+    // if (!product) {
+    //   throw new NotFoundException('Product not found');
+    // }
+    // if (userRole !== Role.ADMIN && product.sellerId !== userId) {
+    //   throw new ForbiddenException(
+    //     'You are not allowed to delete this product',
+    //   );
+    // }
+    // await this.prisma.product.delete({ where: { id } });
+    // return { message: 'Product deleted successfully' };
   }
 }

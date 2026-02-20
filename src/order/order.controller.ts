@@ -30,6 +30,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { OrderResponseDto } from './dto/order-response.dto';
+import { Throttle } from '@nestjs/throttler';
 import type { MidtransNotification } from './types/midtrans.type';
 import { UseInterceptors } from '@nestjs/common';
 import { IdempotencyInterceptor } from 'src/common/interceptors/idempotency.interceptor';
@@ -41,6 +42,7 @@ export class OrderController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiBearerAuth()
   @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({
@@ -185,6 +187,7 @@ export class OrderController {
 
   @Post('notification')
   @HttpCode(200)
+  @Throttle({ default: { limit: 100, ttl: 60000 } })
   @ApiOperation({
     summary: 'Midtrans payment notification webhook',
     description:
