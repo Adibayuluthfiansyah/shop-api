@@ -39,7 +39,7 @@ export class CreateProductDto {
     example: 21999000,
     minimum: 0,
   })
-  @Transform(({ value }) => {
+  @Transform(({ value }: { value: string }): number | string => {
     const num = Number(value);
     return isNaN(num) ? value : num;
   })
@@ -53,7 +53,7 @@ export class CreateProductDto {
     example: 50,
     minimum: 0,
   })
-  @Transform(({ value }) => {
+  @Transform(({ value }: { value: string }): number | string => {
     const num = Number(value);
     return isNaN(num) ? value : num;
   })
@@ -66,7 +66,7 @@ export class CreateProductDto {
     description: 'Category ID for the product',
     example: 1,
   })
-  @Transform(({ value }) => {
+  @Transform(({ value }: { value: string }): number | string => {
     const num = Number(value);
     return isNaN(num) ? value : num;
   })
