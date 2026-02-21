@@ -140,7 +140,7 @@ export class AuthService {
             (dto.emailVerified as unknown) === true
               ? new Date()
               : dto.emailVerified,
-          password: 'GOOGLE_AUTH_NO_PASSWORD',
+          password: null, // 'GOOGLE_AUTH_NO_PASSWORD',
           role: 'USER',
         },
       });

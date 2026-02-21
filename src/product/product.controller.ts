@@ -87,8 +87,10 @@ export class ProductController {
       try {
         const result = await this.cloudinaryService.uploadImage(file);
         dto.imageUrl = result.url;
-      } catch {
-        throw new BadRequestException('Cloudinary upload failed');
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Cloudinary upload failed';
+        throw new BadRequestException(`Image upload failed: ${errorMessage}`);
       }
     }
     return await this.productService.createProduct(dto, user.userId);

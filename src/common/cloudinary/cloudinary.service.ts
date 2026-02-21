@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   UploadApiResponse,
   UploadApiErrorResponse,
@@ -8,10 +8,20 @@ import { Readable } from 'stream';
 
 @Injectable()
 export class CloudinaryService {
+  private readonly logger = new Logger(CloudinaryService.name);
+
   async uploadImage(
     file: Express.Multer.File,
   ): Promise<UploadApiResponse | UploadApiErrorResponse> {
     return new Promise((resolve, reject) => {
+      // Log cloudinary config for debugging
+      const config = cloudinary.config();
+      this.logger.debug(`Cloudinary config - cloud_name: ${config.cloud_name}, api_key: ${config.api_key ? 'SET' : 'NOT SET'}`);
+
+      if (!config.cloud_name || !config.api_key || !config.api_secret) {
+        return reject(new Error('Cloudinary credentials are not configured properly'));
+      }
+
       const upload = cloudinary.uploader.upload_stream(
         {
           folder: 'shop-products',
@@ -20,6 +30,7 @@ export class CloudinaryService {
         },
         (error, result) => {
           if (error) {
+            this.logger.error(`Cloudinary upload error: ${error.message}`);
             return reject(
               new Error(error.message || 'Cloudinary Upload Failed'),
             );
@@ -30,6 +41,7 @@ export class CloudinaryService {
             );
           }
 
+          this.logger.debug(`Cloudinary upload success: ${result.secure_url}`);
           resolve(result);
         },
       );

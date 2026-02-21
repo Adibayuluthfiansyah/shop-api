@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateCartDto } from './dto/update-cart.dto';
 import { AddToCartDto } from './dto/add-to-cart.dto';
+import Decimal from 'decimal.js';
 
 @Injectable()
 export class CartService {
@@ -109,15 +110,17 @@ export class CartService {
     });
     //calculate total price
     const totalPrice = cartItems.reduce((sum, item) => {
-      return sum + Number(item.product.price) * item.quantity;
-    }, 0);
+      const price = new Decimal(item.product.price.toString());
+      const qty = new Decimal(item.quantity.toString());
+      return sum.plus(price.times(qty));
+    }, new Decimal(0));
 
     return {
       items: cartItems,
       summary: {
         totalItems: cartItems.length,
         totalQuantity: cartItems.reduce((sum, item) => sum + item.quantity, 0),
-        totalPrice,
+        totalPrice: totalPrice.toNumber(),
       },
     };
   }

@@ -544,7 +544,7 @@ export class OrderService {
         take: safeLimit,
         skip,
         include: {
-          user: { select: { id: true, name: true, email: true } },
+          user: { select: { id: true, name: true } },
           items: {
             where: {
               product: { sellerId: sellerId },
