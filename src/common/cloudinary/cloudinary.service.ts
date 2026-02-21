@@ -16,10 +16,14 @@ export class CloudinaryService {
     return new Promise((resolve, reject) => {
       // Log cloudinary config for debugging
       const config = cloudinary.config();
-      this.logger.debug(`Cloudinary config - cloud_name: ${config.cloud_name}, api_key: ${config.api_key ? 'SET' : 'NOT SET'}`);
+      this.logger.debug(
+        `Cloudinary config - cloud_name: ${config.cloud_name}, api_key: ${config.api_key ? 'SET' : 'NOT SET'}`,
+      );
 
       if (!config.cloud_name || !config.api_key || !config.api_secret) {
-        return reject(new Error('Cloudinary credentials are not configured properly'));
+        return reject(
+          new Error('Cloudinary credentials are not configured properly'),
+        );
       }
 
       const upload = cloudinary.uploader.upload_stream(
